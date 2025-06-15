@@ -1,8 +1,6 @@
-import time
-
 import pygame
 import numpy as np
-import sys, os
+import sys
 import Maps
 from Enemy import Enemy1
 from Images import IMAGES
@@ -70,6 +68,7 @@ class Player(pygame.sprite.Sprite):
         self.pending_destroy = []
         self.next_change_time = 0
         self.change_interval  = 100
+        self.space_pressed_last_frame = False
 
     def create_obs(self, obstacles, grid):
         # _wyczyść kolejkę destroy_ na starcie
@@ -82,7 +81,7 @@ class Player(pygame.sprite.Sprite):
         self.pending_create.clear()
         while 0 <= ny < grid.shape[0] and 0 <= nx < grid.shape[1] and grid[ny][nx] == 0:
             self.pending_create.append((ny, nx))
-            ny += dy;
+            ny += dy
             nx += dx
 
         self.next_change_time = pygame.time.get_ticks() + self.change_interval
@@ -97,7 +96,7 @@ class Player(pygame.sprite.Sprite):
         # aż natrafimy na coś innego niż skrzynka (==1)
         while 0 <= ny < grid.shape[0] and 0 <= nx < grid.shape[1] and grid[ny][nx] == 1:
             self.pending_destroy.append((ny, nx))
-            ny += dy;
+            ny += dy
             nx += dx
 
     def change_obs(self, obstacles, grid):
@@ -124,9 +123,9 @@ class Player(pygame.sprite.Sprite):
             if self.pending_destroy:
                 ry, rx = self.pending_destroy.pop(0)
                 for obs in list(obstacles):
-                    oy = (obs.rect.top   - MAP_OFFSET)//TILE_SIZE
-                    ox = (obs.rect.left  - MAP_OFFSET)//TILE_SIZE
-                    if (oy,ox) == (ry,rx):
+                    oy = (obs.rect.top - MAP_OFFSET) // TILE_SIZE
+                    ox = (obs.rect.left - MAP_OFFSET) // TILE_SIZE
+                    if (oy, ox) == (ry, rx):
                         obstacles.remove(obs)
                         obs.kill()
                         grid[ry][rx] = 0
@@ -162,15 +161,24 @@ class Player(pygame.sprite.Sprite):
         # — input: space toggles obs, arrows move grid_pos —
         move = None
         if keys[pygame.K_SPACE]:
-            self.change_obs(obstacles, grid)
-        elif keys[pygame.K_LEFT]:
-            move = (0, -1); self.direction = 'left'
+            if not self.space_pressed_last_frame:
+                self.change_obs(obstacles, grid)
+                self.space_pressed_last_frame = True
+        else:
+            self.space_pressed_last_frame = False
+
+        if keys[pygame.K_LEFT]:
+            move = (0, -1);
+            self.direction = 'left'
         elif keys[pygame.K_RIGHT]:
-            move = (0, 1);  self.direction = 'right'
+            move = (0, 1);
+            self.direction = 'right'
         elif keys[pygame.K_UP]:
-            move = (-1, 0); self.direction = 'up'
+            move = (-1, 0);
+            self.direction = 'up'
         elif keys[pygame.K_DOWN]:
-            move = (1, 0);  self.direction = 'down'
+            move = (1, 0);
+            self.direction = 'down'
 
         if move:
             new_r = self.grid_pos[0] + move[0]
@@ -180,16 +188,17 @@ class Player(pygame.sprite.Sprite):
             test_rect = self.frames[self.direction][0].get_rect(topleft=(new_px, new_py))
             if not any(test_rect.colliderect(o.rect) for o in obstacles):
                 grid[self.grid_pos[0]][self.grid_pos[1]] = 0
-                self.grid_pos    = [new_r, new_c]
-                self.target_pos  = self.pixel_pos_from_grid(self.grid_pos)
-                self.moving      = True
+                self.grid_pos = [new_r, new_c]
+                self.target_pos = self.pixel_pos_from_grid(self.grid_pos)
+                self.moving = True
             grid[self.grid_pos[0]][self.grid_pos[1]] = 3
 
         # — reset to standing frame if not moving —
         if not self.moving:
             if self.frame_index != 0:
                 self.frame_index = 0
-                self.image       = self.frames[self.direction][0]
+                self.image = self.frames[self.direction][0]
+
 
 # Klasa Level - zarządza grą
 class Level:
