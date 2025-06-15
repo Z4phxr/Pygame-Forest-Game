@@ -1,10 +1,22 @@
+import random
 import pygame
 import numpy as np
 import sys
 import Maps
-from Enemy import Enemy1
+from Enemy import Enemy1, Enemy2
+from Fruits import FruitFactory
 from Images import IMAGES
-from Obstacles import Obstacle, Fruit
+from Obstacles import Obstacle
+from typing import Protocol, runtime_checkable, Any
+
+@runtime_checkable
+class Movable(Protocol):
+    """
+    Protocol for objects that support a .move(...) method.
+    Use isinstance(obj, Movable) to check at runtime.
+    """
+    def move(self, *args: Any, **kwargs: Any) -> None:
+        pass
 
 pygame.init()
 
@@ -69,9 +81,11 @@ class Player(pygame.sprite.Sprite):
         self.next_change_time = 0
         self.change_interval  = 100
         self.space_pressed_last_frame = False
+        # edge-detekcja dla strzałek
+        self.arrow_pressed_last_frame = False
 
     def create_obs(self, obstacles, grid):
-        # _wyczyść kolejkę destroy_ na starcie
+        # wyczyść kolejkę destroy na starcie
         self.pending_destroy.clear()
 
         y, x = self.grid_pos
@@ -134,7 +148,7 @@ class Player(pygame.sprite.Sprite):
                 ry, rx = self.pending_create.pop(0)
                 px = rx * TILE_SIZE + MAP_OFFSET
                 py = ry * TILE_SIZE + MAP_OFFSET
-                tile = Obstacle(px, py, "BOX", True)
+                tile = Obstacle(px, py, f"BOX{random.randint(0, 2)}", True)
                 obstacles.add(tile)
                 grid[ry][rx] = 1
 
@@ -158,8 +172,7 @@ class Player(pygame.sprite.Sprite):
                 self.image = self.frames[self.direction][self.frame_index]
             return
 
-        # — input: space toggles obs, arrows move grid_pos —
-        move = None
+        # — input: space toggles obs —
         if keys[pygame.K_SPACE]:
             if not self.space_pressed_last_frame:
                 self.change_obs(obstacles, grid)
@@ -167,18 +180,24 @@ class Player(pygame.sprite.Sprite):
         else:
             self.space_pressed_last_frame = False
 
+        # — direction and movement —
+        move = None
+        pressed_direction = None
         if keys[pygame.K_LEFT]:
-            move = (0, -1);
-            self.direction = 'left'
+            pressed_direction = 'left'
         elif keys[pygame.K_RIGHT]:
-            move = (0, 1);
-            self.direction = 'right'
+            pressed_direction = 'right'
         elif keys[pygame.K_UP]:
-            move = (-1, 0);
-            self.direction = 'up'
+            pressed_direction = 'up'
         elif keys[pygame.K_DOWN]:
-            move = (1, 0);
-            self.direction = 'down'
+            pressed_direction = 'down'
+
+        if pressed_direction:
+            if self.direction == pressed_direction:
+                dy, dx = DIRECTION_VECTORS[pressed_direction]
+                move = (dy, dx)
+            else:
+                self.direction = pressed_direction
 
         if move:
             new_r = self.grid_pos[0] + move[0]
@@ -197,7 +216,7 @@ class Player(pygame.sprite.Sprite):
         if not self.moving:
             if self.frame_index != 0:
                 self.frame_index = 0
-                self.image = self.frames[self.direction][0]
+        self.image = self.frames[self.direction][0]
 
 
 # Klasa Level - zarządza grą
@@ -221,7 +240,19 @@ class Level:
     def update(self, keys):
         self.player.update(keys, self.obstacles, self.grid)
         self.obstacles.update(keys)
-        self.enemies.update(self.obstacles)
+        self.enemies.update(self.obstacles, self.player)
+        for fruit in self.fruits:
+            # tu możesz wstawić własną logikę:
+            # fruit.move('right')
+            # czy na przykład losowo:
+            direction = random.choice(['left','right','up','down'])
+            if isinstance(fruit, Movable):
+                fruit.move(direction)
+
+        # 3) update wszystkich owoców (kolizje i animacja)
+        self.fruits.update(self.obstacles)
+
+
         if pygame.sprite.spritecollideany(self.player, self.enemies):
             self.running = False
         collected = pygame.sprite.spritecollide(self.player, self.fruits, dokill=True)
@@ -242,20 +273,28 @@ class Level:
                 x = col_idx * TILE_SIZE + MAP_OFFSET
                 y = row_idx * TILE_SIZE + MAP_OFFSET
                 if tile_char == '#':
-                    tile = Obstacle(x, y, "BOX", True)
+                    ob = f"BOX{random.randint(0, 2)}"
+                    tile = Obstacle(x, y, ob, True)
                     self.obstacles.add(tile)
                     self.all_sprites.add(tile)
                     self.grid[row_idx][col_idx] = 1
                 elif tile_char == 'P':
                     self.player = Player(x, y)
                     self.grid[row_idx][col_idx] = 3
-                elif tile_char == 'O':
-                    tile = Enemy1(x, y, self.player, self.grid)
+                elif tile_char == 'a':
+                    e1 = Enemy1(x, y, self.grid)
+                    self.enemies.add(e1)
+                    self.all_sprites.add(e1)
+                elif tile_char == 'b':
+                    tile = Enemy2(x, y, self.grid)
                     self.enemies.add(tile)
                     self.all_sprites.add(tile)
                     self.grid[row_idx][col_idx] = 2
                 elif tile_char == 'A':
-                    tile = Fruit(x, y, "F1")
+                    tile = FruitFactory.create('orange', x, y)
+                    self.fruits.add(tile)
+                elif tile_char == 'B':
+                    tile = FruitFactory.create('strawberry', x, y)
                     self.fruits.add(tile)
                 else:
                     self.grid[row_idx][col_idx] = 0
@@ -372,5 +411,5 @@ def main():
     sys.exit()
 
 
-if __name__ == "__main__":
+if _name_ == "_main_":
     main()
