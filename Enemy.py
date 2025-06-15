@@ -22,7 +22,7 @@ class Enemy(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=(x, y))
         self.speed = 1
         self.player = player
-     #test123
+
 
     def move(self, obstacles, direction):
         x, y = self.rect.x, self.rect.y
