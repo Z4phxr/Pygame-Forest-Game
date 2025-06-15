@@ -39,25 +39,37 @@ class MenuBar:
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
+        # 1) Konstruktora Sprite wywołujemy BEZ argumentów!
         super().__init__()
-        self.images = {
-            'up': IMAGES['PLAYER_UP'],
-            'down': IMAGES['PLAYER_DOWN'],
-            'left': IMAGES['PLAYER_LEFT'],
-            'right': IMAGES['PLAYER_RIGHT']
+
+        # 2) Ramki animacji ping-pong dla każdego kierunku
+        self.frames = {
+            'up':    [IMAGES['PLAYER_UP_1'],    IMAGES['PLAYER_UP_2'],    IMAGES['PLAYER_UP_3']],
+            'down':  [IMAGES['PLAYER_DOWN_1'],  IMAGES['PLAYER_DOWN_2'],  IMAGES['PLAYER_DOWN_3']],
+            'left':  [IMAGES['PLAYER_LEFT_1'],  IMAGES['PLAYER_LEFT_2'],  IMAGES['PLAYER_LEFT_3']],
+            'right': [IMAGES['PLAYER_RIGHT_1'], IMAGES['PLAYER_RIGHT_2'], IMAGES['PLAYER_RIGHT_3']],
         }
-        self.direction = 'down'
-        self.image = self.images[self.direction]
-        self.grid_pos = [(y - MAP_OFFSET) // TILE_SIZE, (x - MAP_OFFSET) // TILE_SIZE]
-        self.pixel_pos = self.pixel_pos_from_grid(self.grid_pos)
-        self.rect = self.image.get_rect(center=self.pixel_pos)
-        self.target_pos = self.pixel_pos
-        self.moving = False
-        self.move_speed = 3
-        self.pending_create = []
+        self.direction      = 'down'
+        self.frame_index    = 0
+        self.anim_dir       = 1                # +1 lub -1
+        self.last_anim_time = pygame.time.get_ticks()
+        self.anim_interval  = 200            # ms między klatkami
+
+        # 3) Ustawiamy początkowy obraz i pozycję (topleft, nie center)
+        self.image     = self.frames[self.direction][self.frame_index]
+        self.rect      = self.image.get_rect(topleft=(x, y))
+
+        # 4) Pozycja w siatce i pixelach:
+        self.grid_pos  = [(y - MAP_OFFSET)//TILE_SIZE, (x - MAP_OFFSET)//TILE_SIZE]
+        self.target_pos = [x, y]               # pixelowa pozycja celu
+
+        # 5) Ruch i obsługa przeszkód:
+        self.moving          = False
+        self.move_speed      = 3
+        self.pending_create  = []
         self.pending_destroy = []
         self.next_change_time = 0
-        self.change_interval = 100
+        self.change_interval  = 100
 
     def create_obs(self, obstacles, grid):
         # _wyczyść kolejkę destroy_ na starcie
@@ -107,22 +119,18 @@ class Player(pygame.sprite.Sprite):
     def update(self, keys, obstacles, grid):
         now = pygame.time.get_ticks()
 
-        # jeśli mamy cokolwiek do create lub destroy i czas minął
+        # — handle pending create/destroy one step at a time —
         if (self.pending_destroy or self.pending_create) and now >= self.next_change_time:
-            # priorytetowo usuwamy, jeśli jest co usuwać
             if self.pending_destroy:
                 ry, rx = self.pending_destroy.pop(0)
-                # wyszukaj sprite-a na tych wsp.
                 for obs in list(obstacles):
-                    oy = (obs.rect.top - MAP_OFFSET) // TILE_SIZE
-                    ox = (obs.rect.left - MAP_OFFSET) // TILE_SIZE
-                    if oy == ry and ox == rx:
+                    oy = (obs.rect.top   - MAP_OFFSET)//TILE_SIZE
+                    ox = (obs.rect.left  - MAP_OFFSET)//TILE_SIZE
+                    if (oy,ox) == (ry,rx):
                         obstacles.remove(obs)
                         obs.kill()
                         grid[ry][rx] = 0
                         break
-
-            # a jeśli nie ma do destroy, to tworzymy
             elif self.pending_create:
                 ry, rx = self.pending_create.pop(0)
                 px = rx * TILE_SIZE + MAP_OFFSET
@@ -131,61 +139,57 @@ class Player(pygame.sprite.Sprite):
                 obstacles.add(tile)
                 grid[ry][rx] = 1
 
-            # zaplanuj kolejny krok
             self.next_change_time = now + self.change_interval
 
+        # — smooth movement towards target tile —
         if self.moving:
-            # Płynne przejście do target_pos
             dx = self.target_pos[0] - self.rect.centerx
             dy = self.target_pos[1] - self.rect.centery
-
-            move_x = max(-self.move_speed, min(self.move_speed, dx))
-            move_y = max(-self.move_speed, min(self.move_speed, dy))
-            self.rect.centerx += move_x
-            self.rect.centery += move_y
-
-            # Sprawdź czy dotarliśmy do celu
+            mvx = max(-self.move_speed, min(self.move_speed, dx))
+            mvy = max(-self.move_speed, min(self.move_speed, dy))
+            self.rect.centerx += mvx
+            self.rect.centery += mvy
             if abs(dx) <= self.move_speed and abs(dy) <= self.move_speed:
                 self.rect.center = self.target_pos
                 self.moving = False
+            # animate while moving
+            if now - self.last_anim_time >= self.anim_interval:
+                self.last_anim_time = now
+                self.frame_index = (self.frame_index + 1) % len(self.frames[self.direction])
+                self.image = self.frames[self.direction][self.frame_index]
             return
 
+        # — input: space toggles obs, arrows move grid_pos —
         move = None
         if keys[pygame.K_SPACE]:
             self.change_obs(obstacles, grid)
         elif keys[pygame.K_LEFT]:
-            move = (0, -1)
-            self.direction = 'left'
+            move = (0, -1); self.direction = 'left'
         elif keys[pygame.K_RIGHT]:
-            move = (0, 1)
-            self.direction = 'right'
+            move = (0, 1);  self.direction = 'right'
         elif keys[pygame.K_UP]:
-            move = (-1, 0)
-            self.direction = 'up'
+            move = (-1, 0); self.direction = 'up'
         elif keys[pygame.K_DOWN]:
-            move = (1, 0)
-            self.direction = 'down'
+            move = (1, 0);  self.direction = 'down'
 
         if move:
-            new_row = self.grid_pos[0] + move[0]
-            new_col = self.grid_pos[1] + move[1]
-            self.image = self.images[self.direction]
-            new_x = new_col * TILE_SIZE + MAP_OFFSET
-            new_y = new_row * TILE_SIZE + MAP_OFFSET
-            test_rect = self.image.get_rect(topleft=(new_x, new_y))
-
-            collision = False
-            for obstacle in obstacles:
-                if test_rect.colliderect(obstacle.rect):
-                    collision = True
-                    break
-
-            if not collision:
+            new_r = self.grid_pos[0] + move[0]
+            new_c = self.grid_pos[1] + move[1]
+            new_px = new_c * TILE_SIZE + MAP_OFFSET
+            new_py = new_r * TILE_SIZE + MAP_OFFSET
+            test_rect = self.frames[self.direction][0].get_rect(topleft=(new_px, new_py))
+            if not any(test_rect.colliderect(o.rect) for o in obstacles):
                 grid[self.grid_pos[0]][self.grid_pos[1]] = 0
-                self.grid_pos = [new_row, new_col]
-                self.target_pos = self.pixel_pos_from_grid(self.grid_pos)
-                self.moving = True
+                self.grid_pos    = [new_r, new_c]
+                self.target_pos  = self.pixel_pos_from_grid(self.grid_pos)
+                self.moving      = True
             grid[self.grid_pos[0]][self.grid_pos[1]] = 3
+
+        # — reset to standing frame if not moving —
+        if not self.moving:
+            if self.frame_index != 0:
+                self.frame_index = 0
+                self.image       = self.frames[self.direction][0]
 
 # Klasa Level - zarządza grą
 class Level:
