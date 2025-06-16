@@ -90,12 +90,14 @@ class Strawberry(GridMovableMixin, AnimatedFruit):
         frame_keys = ['STRAWBERRY_1', 'STRAWBERRY_2', 'STRAWBERRY_3', 'STRAWBERRY_4', 'STRAWBERRY_5', 'STRAWBERRY_6']
         AnimatedFruit.__init__(self, x, y, frame_keys, anim_interval=180)
         GridMovableMixin.__init__(self, move_speed=1)
+        self.collectable = True
 
 class Orange(pygame.sprite.Sprite):
     def __init__(self, x, y, png = "ORANGE"):
         super().__init__()
         self.image = IMAGES[png]
         self.rect = self.image.get_rect(topleft=(x, y))
+        self.collectable = True
 
 class FruitFactory:
     """
@@ -117,6 +119,7 @@ class FruitFactory:
 class Pineapple(pygame.sprite.Sprite):
     def __init__(self, x, y, grid):
         super().__init__()
+        self.collectable = True
 
         # Animacje
         self.walk_frames = [
@@ -172,6 +175,7 @@ class Pineapple(pygame.sprite.Sprite):
 
         # DEPARTURE
         if self.departing:
+            self.collectable = False
             if now - self.anim_time >= self.departure_interval:
                 self.anim_time = now
                 self.frame_index += 1
@@ -207,6 +211,7 @@ class Pineapple(pygame.sprite.Sprite):
 
         # LANDING
         if self.landing:
+            self.collectable = True
             if now - self.anim_time >= self.landing_interval:
                 self.anim_time = now
                 self.frame_index += 1

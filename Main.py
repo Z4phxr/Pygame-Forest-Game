@@ -78,13 +78,12 @@ class MenuBar:
         self.level = level
 
     def draw(self, screen):
-        pygame.draw.rect(screen, self.color, self.rect)
         #TEKST
         font = pygame.font.Font(None, 40)
         font_color = (255, 255, 255)
         score_text = f"LEVEL {self.level}"
         score_surf = font.render(score_text, True, font_color)
-        score_rect = score_surf.get_rect(topleft=(20, HEIGHT-50))
+        score_rect = score_surf.get_rect(topleft=(200, HEIGHT-50))
         screen.blit(score_surf, score_rect)
 
 
@@ -274,14 +273,19 @@ class Level:
         # 3) update wszystkich owoców (kolizje i animacja)
         self.fruits.update(self.obstacles)
 
-
         if pygame.sprite.spritecollideany(self.player, self.enemies) or self.fruits_to_collect == 0:
             self.running = False
-            if not self.fruits_to_collect:
+            if self.fruits_to_collect == 0:
                 self.won = True
-        collected = pygame.sprite.spritecollide(self.player, self.fruits, dokill=True)
+
+        # SPRAWDZAMY, CZY GRACZ DOTYKA OWOCÓW — ale nie zabijamy automatycznie
+        collected = pygame.sprite.spritecollide(self.player, self.fruits, dokill=False)
+
         for fruit in collected:
-            self.fruits_to_collect -= 1
+            if hasattr(fruit, 'collectable') and fruit.collectable:
+                self.fruits_to_collect -= 1
+                fruit.kill()
+
         self.player.particles.update()
 
     def draw(self, surface):
