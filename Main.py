@@ -384,13 +384,13 @@ def main():
     menu_rect = pygame.Rect(300, 480, 400, 100)
     restart_rect = pygame.Rect(300, 324, 400, 100)
     menu_rect1 = pygame.Rect(300, 480, 400, 100)
-    lvl_menu_rect = pygame.Rect(300, 480, 400, 100)
+    lvl_menu_rect = pygame.Rect(330, 22, 210, 50)
+    game_menu_rect = pygame.Rect(52, 689, 150, 40)
+    game_restart_rect = pygame.Rect(790, 689, 150, 40)
 
     state = "MAIN_MENU"
     level = None
     selected_lvl = 0
-
-
 
     running = True
     while running:
@@ -404,6 +404,7 @@ def main():
                 if state == "MAIN_MENU":
                     if start_rect.collidepoint(mx, my):
                         state = "LEVEL_SELECT"
+
                 elif state == "LEVEL_SELECT":
                     for lvl_name, (rect, mapa) in LEVELS.items():
                         if rect.collidepoint(mx, my):
@@ -412,6 +413,8 @@ def main():
                             level = Level(mapa, current_lvl)  # przekazujemy listę znaków, nie współrzędną
                             state = "PLAY"
                             break
+                    if lvl_menu_rect.collidepoint(mx, my):
+                        state = "MAIN_MENU"
 
                 elif state == "GAME_OVER_WON":
                     if restart_rect.collidepoint(mx, my):
@@ -431,6 +434,13 @@ def main():
                         state = "PLAY"
                     elif menu_rect1.collidepoint(mx, my):
                         state = "MAIN_MENU"
+                elif state == "PLAY":
+                    if game_menu_rect.collidepoint(mx, my):
+                        state = "MAIN_MENU"
+                    elif game_restart_rect.collidepoint(mx, my):
+                        state = "PLAY"
+                        level = Level(LEVELS[f"LEVEL_{current_lvl}"][1], current_lvl)
+
 
         screen.fill(WHITE)
 
@@ -441,7 +451,6 @@ def main():
             screen.blit(IMAGES["LEVELS"], (0, 0))
 
         elif state == "PLAY":
-            level.draw(screen)
             level.update(keys)
             level.draw(screen)
             if not level.running:
