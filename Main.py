@@ -20,6 +20,11 @@ class Movable(Protocol):
 
 pygame.init()
 
+pygame.mixer.init()
+pygame.mixer.music.load("las.mp3")
+pygame.mixer.music.set_volume(1.0)
+pygame.mixer.music.play(-1)
+
 WIDTH, HEIGHT = 1000, 750
 TILE_SIZE = 50
 MAP_OFFSET = 25
