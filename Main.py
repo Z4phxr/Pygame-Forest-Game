@@ -241,6 +241,7 @@ class Level:
         self.menu_bar = MenuBar()
         self.create_borders()
         self.running = True
+        self.won = False
 
 
 
@@ -262,11 +263,12 @@ class Level:
 
         if pygame.sprite.spritecollideany(self.player, self.enemies) or self.fruits_to_collect == 0:
             self.running = False
+            if not self.fruits_to_collect:
+                self.won = True
         collected = pygame.sprite.spritecollide(self.player, self.fruits, dokill=True)
         for fruit in collected:
             self.fruits_to_collect -= 1
         self.player.particles.update()
-        print(self.fruits_to_collect)
 
     def draw(self, surface):
         surface.blit(IMAGES["GRASS"], (0, 0))
@@ -328,6 +330,7 @@ def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
     clock  = pygame.time.Clock()
+    current_lvl = None
 
     # przygotuj overlay raz
     overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -356,12 +359,10 @@ def main():
     }
 
     # GAME_OVER
-    go_txt       = title_font.render("GAME OVER", True, BLACK)
-    go_rect      = go_txt.get_rect(center=(WIDTH//2, HEIGHT//3))
-    restart_txt  = btn_font.render("RESTART", True, BLACK)
-    restart_rect = restart_txt.get_rect(center=(WIDTH//2, HEIGHT//2 - 30))
-    menu_txt     = btn_font.render("MENU", True, BLACK)
-    menu_rect    = menu_txt.get_rect(center=(WIDTH//2, HEIGHT//2 + 30))
+    next_rect = pygame.Rect(300, 324, 400, 100)
+    menu_rect = pygame.Rect(300, 480, 400, 100)
+    restart_rect = pygame.Rect(300, 324, 400, 100)
+    menu_rect1 = pygame.Rect(300, 480, 400, 100)
 
     state = "MAIN_MENU"
     level = None
@@ -385,42 +386,50 @@ def main():
                     for lvl_name, (rect, mapa) in LEVELS.items():
                         if rect.collidepoint(mx, my):
                             selected_lvl = lvl_name
+                            current_lvl = lvl_name[-1]
                             level = Level(mapa)  # przekazujemy listę znaków, nie współrzędną
                             state = "PLAY"
                             break
 
-                elif state == "GAME_OVER":
+                elif state == "GAME_OVER_WON":
                     if restart_rect.collidepoint(mx, my):
-                        level = Level(LEVELS[selected_lvl][1])
+                        current_lvl = int(current_lvl) + 1
+                        next_lvl_key = f"LEVEL_{current_lvl}"
+                        print(next_lvl_key)
+                        level = Level(LEVELS[next_lvl_key][1])
                         state = "PLAY"
                     elif menu_rect.collidepoint(mx, my):
+                        state = "MAIN_MENU"
+                elif state == "GAME_OVER_LOST":
+                    if next_rect.collidepoint(mx, my):
+                        level = Level(LEVELS[selected_lvl][1])
+                        state = "PLAY"
+                    elif menu_rect1.collidepoint(mx, my):
                         state = "MAIN_MENU"
 
         screen.fill(WHITE)
 
         if state == "MAIN_MENU":
             screen.blit(IMAGES["FOREST"], (0, 0))
-            #pygame.draw.rect(screen, GREEN, start_rect.inflate(20,20))
 
         elif state == "LEVEL_SELECT":
             screen.blit(IMAGES["LEVELS"], (0, 0))
 
         elif state == "PLAY":
             level.draw(screen)
-            # Game Over + przyciski
             level.update(keys)
             level.draw(screen)
             if not level.running:
-                state = "GAME_OVER"
+                state = "GAME_OVER_LOST"
+                if level.won:
+                    state = 'GAME_OVER_WON'
 
-        elif state == "GAME_OVER":
-            # rysuj zamrożony poziom
-            screen.blit(go_txt, go_rect)
-            pygame.draw.rect(screen, BLUE, restart_rect.inflate(20,10))
-            screen.blit(restart_txt, restart_rect)
-            screen.blit(overlay, (0,0))
-            pygame.draw.rect(screen, BLUE, menu_rect.inflate(20,10))
-            screen.blit(menu_txt, menu_rect)
+        elif state == "GAME_OVER_WON":
+            screen.blit(overlay, (0, 0))
+            screen.blit(IMAGES["YOU_WON"], (0,0))
+        elif state == "GAME_OVER_LOST":
+            screen.blit(overlay, (0, 0))
+            screen.blit(IMAGES["GAME_OVER"], (0,0))
 
         pygame.display.flip()
         clock.tick(FPS)
