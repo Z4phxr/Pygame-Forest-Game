@@ -1,4 +1,4 @@
-rom collections import deque
+from collections import deque
 import os
 import pygame
 from Images import IMAGES, TILE_SIZE
