@@ -1,4 +1,5 @@
-rom collections import deque
+import random
+from collections import deque
 import os
 import pygame
 from Images import IMAGES, TILE_SIZE
@@ -9,117 +10,69 @@ TILE_SIZE = 50
 MAP_OFFSET = 25
 
 
-class Enemy(pygame.sprite.Sprite):
-    def __init__(self, x, y, player):
-        super().__init__()
-        self.images = {
-            'up': IMAGES['O_UP'],
-            'down': IMAGES['O_DOWN'],
-            'left': IMAGES['O_LEFT'],
-            'right': IMAGES['O_RIGHT']
-        }
-        self.direction = 'down'
-        self.image = self.images[self.direction]
-        self.rect = self.image.get_rect(topleft=(x, y))
-        self.speed = 1
-        self.player = player
-
-
-    def move(self, obstacles, direction):
-        x, y = self.rect.x, self.rect.y
-        moved = False
-
-        if direction == "left":
-            self.rect.x -= self.speed
-            self.direction = 'left'
-
-            moved = True
-        if direction == 'right':
-            self.rect.x += self.speed
-            self.direction = 'right'
-            moved = True
-        if direction == 'up':
-            self.rect.y -= self.speed
-            self.direction = 'up'
-            moved = True
-        if direction == 'down':
-            self.rect.y += self.speed
-            self.direction = 'down'
-            moved = True
-
-        if pygame.sprite.spritecollideany(self, obstacles):
-            self.rect.x = x
-            self.rect.y = y
-
-        # Aktualizuj obrazek tylko jeśli rusza się
-        if moved:
-            self.image = self.images[self.direction]
-
-
-#po prostu porusza się w kierunku player
 class Enemy1(pygame.sprite.Sprite):
     """
-    Enemy with BFS pathfinding and collision avoidance via grid reservation:
-    - Rezerwuje swoją komórkę w grid (wartość 2)
-    - Co REPATH_INTERVAL klatek przelicza ścieżkę do gracza przekazanego w update()
-    - Porusza się płynnie kafelek po kafelku
-    - Animuje 3-klatkową sekwencję dla każdego kierunku
+    Enemy1: porusza się kafelek po kafelku za graczem, używając BFS,
+    z płynną interpolacją ruchu i animacją 3-klatkową dla każdego kierunku.
+    Dodatkowo animacja "frustracji" gdy brak ścieżki.
+    Rezerwuje swój kafelek w gridzie (wartość 2), by unikać kolizji.
     """
     REPATH_INTERVAL = 10
 
-    def __init__(self, x: int, y: int, grid: np.ndarray, speed: int = 1, anim_interval: int = 200):
+    def __init__(self, x: int, y: int, grid: np.ndarray, speed: int = 1, anim_interval: int = 200, frustr_interval: int = 600):
         super().__init__()
-        # 1) Wczytanie klatek animacji dla każdego kierunku
+        # animacyjne klatki dla czterech kierunków
         self.frames = {
-            'up':    [IMAGES['O_UP_1'],    IMAGES['O_UP_2'],    IMAGES['O_UP_3']],
-            'right': [IMAGES['O_RIGHT_1'], IMAGES['O_RIGHT_2'], IMAGES['O_RIGHT_3']],
-            'down':  [IMAGES['O_DOWN_1'],  IMAGES['O_DOWN_2'],  IMAGES['O_DOWN_3']],
-            'left':  [IMAGES['O_LEFT_1'],  IMAGES['O_LEFT_2'],  IMAGES['O_LEFT_3']],
+            'up': [IMAGES['E2_UP_1'], IMAGES['E2_UP_2'], IMAGES['E2_UP_3']],
+            'right': [IMAGES['E2_RIGHT_1'], IMAGES['E2_RIGHT_2'], IMAGES['E2_RIGHT_3']],
+            'down': [IMAGES['E2_DOWN_1'], IMAGES['E2_DOWN_2'], IMAGES['E2_DOWN_3']],
+            'left': [IMAGES['E2_LEFT_1'], IMAGES['E2_LEFT_2'], IMAGES['E2_LEFT_3']],
         }
-        # 2) Stan animacji
+        # nowe klatki frustracji (E2)
+        self.frustration_frames = [
+            IMAGES['E2_IDLE_1'],
+            IMAGES['E2_IDLE_2'],
+            IMAGES['E2_IDLE_3'],
+            IMAGES['E2_IDLE_4']
+        ]
+        # stan animacji
         self.direction      = 'down'
-        self.frame_index    = 0
+        self.frame_index    = random.randint(0, 3)
         self.anim_dir       = 1
         self.last_anim_time = pygame.time.get_ticks()
-        self.anim_interval  = anim_interval
-
-        # 3) Obraz i prostokąt
+        self.anim_interval      = anim_interval
+        self.frustr_interval    = frustr_interval  # wolniejsza animacja frustracji
+        # obraz i prostokąt
         self.image = self.frames[self.direction][0]
         self.rect  = self.image.get_rect(topleft=(x, y))
 
-        # 4) Logika ruchu i pathfinding
-        self.grid      = grid
-        self.speed     = speed
-        # Wyliczenie pozycji w gridzie
+        # logika ruchu
+        self.grid  = grid
+        self.speed = speed
+        # wyznacz pozycję w gridzie i rezerwuj
         row = (y - MAP_OFFSET + TILE_SIZE//2) // TILE_SIZE
         col = (x - MAP_OFFSET + TILE_SIZE//2) // TILE_SIZE
         self.grid_pos = [row, col]
-        # Rezerwacja kafelka
         self.grid[row][col] = 2
 
-        # 5) Przygotowanie do płynnego ruchu
         self.target_pos = [self.rect.x, self.rect.y]
         self.moving     = False
+        self.path       = []
+        self.clock      = 0
 
-        # 6) BFS
-        self.path  = []
-        self.clock = 0
-
-    def pixel_pos_from_grid(self, grid_pos: tuple) -> list:
-        """Przelicza współrzędne grid -> piksele"""
+    def pixel_pos_from_grid(self, grid_pos):
         r, c = grid_pos
-        px = c * TILE_SIZE + MAP_OFFSET + TILE_SIZE//2
-        py = r * TILE_SIZE + MAP_OFFSET + TILE_SIZE//2
+        px = c * TILE_SIZE + MAP_OFFSET
+        py = r * TILE_SIZE + MAP_OFFSET
         return [px, py]
 
     def bfs(self, start: tuple, goal: tuple) -> list:
-        """Oblicza ścieżkę z start do goal w tablicy grid"""
         rows, cols = self.grid.shape
-        q = deque([start])
+        queue = deque([start])
         came_from = {start: None}
         visited = {start}
-        while q:
-            cur = q.popleft()
+        while queue:
+            cur = queue.popleft()
             if cur == goal:
                 path = []
                 while cur is not None:
@@ -129,77 +82,85 @@ class Enemy1(pygame.sprite.Sprite):
             for dr, dc in [(-1,0),(1,0),(0,-1),(0,1)]:
                 nb = (cur[0]+dr, cur[1]+dc)
                 if (0 <= nb[0] < rows and 0 <= nb[1] < cols
-                   and (self.grid[nb] == 0 or nb == goal)
+                   and (self.grid[nb] != 1 or nb == goal)
                    and nb not in visited):
                     visited.add(nb)
                     came_from[nb] = cur
-                    q.append(nb)
+                    queue.append(nb)
         return []
 
-    def update(self, obstacles: pygame.sprite.Group, player: pygame.sprite.Sprite):
-        """
-        obstacles jest ignorowane (kolizje przez grid),
-        player musi być dostarczony każdorazowo przy wywołaniu
-        """
-        if player is None:
-            return
+    def animate_frustration(self):
+        now = pygame.time.get_ticks()
+        if now - self.last_anim_time >= self.frustr_interval:
+            self.last_anim_time = now
+            max_idx = len(self.frustration_frames) - 1
+            if self.frame_index == max_idx:
+                self.anim_dir = -1
+            elif self.frame_index == 0:
+                self.anim_dir = 1
+            self.frame_index += self.anim_dir
+            # obraz frustracji (bez zmiany kierunku)
+            self.image = self.frustration_frames[self.frame_index]
 
-        # 1) Kontynuacja płynnego ruchu
+    def update(self, obstacles: pygame.sprite.Group, player: pygame.sprite.Sprite):
+        # 1) Dokończ interpolację ruchu jak wcześniej...
         if self.moving:
             dx = self.target_pos[0] - self.rect.x
             dy = self.target_pos[1] - self.rect.y
-            sx = max(-self.speed, min(self.speed, dx))
-            sy = max(-self.speed, min(self.speed, dy))
-            self.rect.x += sx
-            self.rect.y += sy
+            step_x = max(-self.speed, min(self.speed, dx))
+            step_y = max(-self.speed, min(self.speed, dy))
+            self.rect.x += step_x
+            self.rect.y += step_y
             if abs(dx) <= self.speed and abs(dy) <= self.speed:
                 self.rect.topleft = (self.target_pos[0], self.target_pos[1])
                 self.moving = False
-            # animacja podczas ruchu
-            now = pygame.time.get_ticks()
-            if now - self.last_anim_time >= self.anim_interval:
-                self.last_anim_time = now
-                max_i = len(self.frames[self.direction]) - 1
-                if self.frame_index == max_i:
-                    self.anim_dir = -1
-                elif self.frame_index == 0:
-                    self.anim_dir = 1
-                self.frame_index += self.anim_dir
-                self.image = self.frames[self.direction][self.frame_index]
+                self.frame_index = 0
+                self.image = self.frames[self.direction][0]
+                self.path = []
+            else:
+                now = pygame.time.get_ticks()
+                if now - self.last_anim_time >= self.anim_interval:
+                    self.last_anim_time = now
+                    max_i = len(self.frames[self.direction]) - 1
+                    if self.frame_index == max_i:
+                        self.anim_dir = -1
+                    elif self.frame_index == 0:
+                        self.anim_dir = 1
+                    self.frame_index += self.anim_dir
+                    self.image = self.frames[self.direction][self.frame_index]
             return
 
-        # 2) Co REPATH_INTERVAL klatek przeliczamy ścieżkę
-        self.clock += 1
-        if self.clock % self.REPATH_INTERVAL == 0 or not self.path:
-            start = tuple(self.grid_pos)
-            goal = ((player.rect.centery - MAP_OFFSET)//TILE_SIZE,
-                    (player.rect.centerx  - MAP_OFFSET)//TILE_SIZE)
-            self.path = self.bfs(start, goal)
+        # 2) Wyznacz trasę
+        start = tuple(self.grid_pos)
+        goal = ((player.rect.centery - MAP_OFFSET)//TILE_SIZE,
+                (player.rect.centerx  - MAP_OFFSET)//TILE_SIZE)
+        self.path = self.bfs(start, goal)
 
-        # 3) Realizacja kolejnego kroku z path
+        # 3) Jeżeli są kroki to chodź
         if len(self.path) > 1:
             nxt = self.path[1]
-            player_tile = ((player.rect.centery - MAP_OFFSET)//TILE_SIZE,
-                           (player.rect.centerx  - MAP_OFFSET)//TILE_SIZE)
-            if self.grid[nxt] != 0 and nxt != player_tile:
-                return
-            # zwalniamy starą i rezerwujemy nową komórkę
-            self.grid[self.grid_pos[0]][self.grid_pos[1]] = 0
+            old_r, old_c = self.grid_pos
+            dr = nxt[0] - old_r
+            dc = nxt[1] - old_c
+            self.grid[old_r][old_c] = 0
             self.grid[nxt[0]][nxt[1]] = 2
             self.grid_pos = [nxt[0], nxt[1]]
-            # ustawiamy pikselowy cel
             self.target_pos = self.pixel_pos_from_grid(self.grid_pos)
-            # ustawiamy kierunek i obrazek
-            dr = nxt[0] - self.grid_pos[0]
-            dc = nxt[1] - self.grid_pos[1]
-            if dc == -1: self.direction = 'left'
-            elif dc == 1: self.direction = 'right'
-            elif dr == -1: self.direction = 'up'
-            elif dr == 1: self.direction = 'down'
+            # ustaw kierunek
+            if dc < 0:
+                self.direction = 'left'
+            elif dc > 0:
+                self.direction = 'right'
+            elif dr < 0:
+                self.direction = 'up'
+            elif dr > 0:
+                self.direction = 'down'
             self.frame_index = 0
             self.image = self.frames[self.direction][0]
-            # rozpoczynamy ruch
             self.moving = True
+        else:
+            # brak ścieżki: animacja frustracji
+            self.animate_frustration()
 
 
 
@@ -219,11 +180,12 @@ class Enemy2(pygame.sprite.Sprite):
         super().__init__()
         # 1) Load animation frames (3 per direction)
         self.frames = {
-            'up':    [IMAGES['E_UP_1'],    IMAGES['E_UP_2'],    IMAGES['E_UP_3']],
-            'right': [IMAGES['E_RIGHT_1'], IMAGES['E_RIGHT_2'], IMAGES['E_RIGHT_3']],
-            'down':  [IMAGES['E_DOWN_1'],  IMAGES['E_DOWN_2'],  IMAGES['E_DOWN_3']],
-            'left':  [IMAGES['E_LEFT_1'],  IMAGES['E_LEFT_2'],  IMAGES['E_LEFT_3']],
+            'up':    [IMAGES['E1_UP_1'],    IMAGES['E1_UP_2'],    IMAGES['E1_UP_3']],
+            'right': [IMAGES['E1_RIGHT_1'], IMAGES['E1_RIGHT_2'], IMAGES['E1_RIGHT_3']],
+            'down':  [IMAGES['E1_DOWN_1'],  IMAGES['E1_DOWN_2'],  IMAGES['E1_DOWN_3']],
+            'left':  [IMAGES['E1_LEFT_1'],  IMAGES['E1_LEFT_2'],  IMAGES['E1_LEFT_3']],
         }
+
         # Animation state
         self.direction      = 'up'
         self.frame_index    = 0

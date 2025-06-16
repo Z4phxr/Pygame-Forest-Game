@@ -1,3 +1,5 @@
+import random
+
 import pygame
 from Images import IMAGES
 import numpy as np
@@ -85,12 +87,12 @@ class GridMovableMixin:
 
 class Strawberry(GridMovableMixin, AnimatedFruit):
     def __init__(self, x, y):
-        frame_keys = ['APPLE_1', 'APPLE_2', 'APPLE_3']
+        frame_keys = ['STRAWBERRY_1', 'STRAWBERRY_2', 'STRAWBERRY_3', 'STRAWBERRY_4', 'STRAWBERRY_5', 'STRAWBERRY_6']
         AnimatedFruit.__init__(self, x, y, frame_keys, anim_interval=180)
         GridMovableMixin.__init__(self, move_speed=1)
 
 class Orange(pygame.sprite.Sprite):
-    def __init__(self, x, y, png = "F1"):
+    def __init__(self, x, y, png = "ORANGE"):
         super().__init__()
         self.image = IMAGES[png]
         self.rect = self.image.get_rect(topleft=(x, y))
@@ -100,13 +102,77 @@ class FruitFactory:
     Factory to create fruit instances by type.
     """
     @staticmethod
-    def create(fruit_type, x, y):
+    def create(fruit_type, x, y, grid=None):
         ft = fruit_type.lower()
         if ft == 'strawberry':
             return Strawberry(x, y)
         elif ft == 'orange':
             # Orange class must be defined/imported
             return Orange(x, y)
-        # add more types here
+        elif ft == 'pineapple':
+            return Pineapple(x, y, grid)
         else:
             raise ValueError(f"Unknown fruit type: {fruit_type}")
+
+
+class Pineapple(GridMovableMixin, AnimatedFruit):
+    def __init__(self, x, y, grid):
+        frame_keys = ['PINEAPPLE_1', 'PINEAPPLE_2', 'PINEAPPLE_3']
+        AnimatedFruit.__init__(self, x, y, frame_keys, anim_interval=200)
+        GridMovableMixin.__init__(self, move_speed=2)
+        self.grid = grid
+        self.direction = random.choice(list(direction_vectors.keys()))
+        self.flying = False
+        self.fly_target = None
+        self.fly_speed = 1
+
+    def move(self, _=None):
+        if self.flying:
+            self._fly()
+            return
+
+        dr, dc = direction_vectors[self.direction]
+        r, c = self.grid_pos
+        next_r, next_c = r + dr, c + dc
+
+        if not (0 <= next_r < self.grid.shape[0] and 0 <= next_c < self.grid.shape[1]):
+            self._change_direction()
+            return
+
+        if self.grid[next_r][next_c] == 1:
+            far_r, far_c = next_r + dr, next_c + dc
+            if 0 <= far_r < self.grid.shape[0] and 0 <= far_c < self.grid.shape[1]:
+                if self.grid[far_r][far_c] == 0:
+                    self.flying = True
+                    self.fly_target = [
+                        far_c * TILE_SIZE + MAP_OFFSET,
+                        far_r * TILE_SIZE + MAP_OFFSET
+                    ]
+                    self.grid_pos = [far_r, far_c]
+                    return
+            self._change_direction()
+            return
+
+        GridMovableMixin.move(self, self.direction)
+
+    def _fly(self):
+        if not self.fly_target:
+            self.flying = False
+            return
+
+        dx = self.fly_target[0] - self.rect.x
+        dy = self.fly_target[1] - self.rect.y
+        step_x = max(-self.fly_speed, min(self.fly_speed, dx))
+        step_y = max(-self.fly_speed, min(self.fly_speed, dy))
+        self.rect.x += step_x
+        self.rect.y += step_y
+
+        if abs(dx) <= self.fly_speed and abs(dy) <= self.fly_speed:
+            self.rect.topleft = self.fly_target
+            self.flying = False
+            self.fly_target = None
+
+    def _change_direction(self):
+        self.direction = random.choice(list(direction_vectors.keys()))
+
+
