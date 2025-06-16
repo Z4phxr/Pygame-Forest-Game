@@ -384,6 +384,7 @@ def main():
     menu_rect = pygame.Rect(300, 480, 400, 100)
     restart_rect = pygame.Rect(300, 324, 400, 100)
     menu_rect1 = pygame.Rect(300, 480, 400, 100)
+    lvl_menu_rect = pygame.Rect(300, 480, 400, 100)
 
     state = "MAIN_MENU"
     level = None
@@ -446,10 +447,10 @@ def main():
                     state = 'GAME_OVER_WON'
 
         elif state == "GAME_OVER_WON":
-            screen.blit(overlay, (0, 0))
+            screen.blit(IMAGES["OVERLAY"], (0, 0))
             screen.blit(IMAGES["YOU_WON"], (0,0))
         elif state == "GAME_OVER_LOST":
-            screen.blit(overlay, (0, 0))
+            screen.blit(IMAGES["OVERLAY"], (0, 0))
             screen.blit(IMAGES["GAME_OVER"], (0,0))
 
         pygame.display.flip()
