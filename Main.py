@@ -428,11 +428,14 @@ def main():
                     if restart_rect.collidepoint(mx, my):
                         current_lvl = int(current_lvl) + 1
                         next_lvl_key = f"LEVEL_{current_lvl}"
-                        print(next_lvl_key)
-                        level = Level(LEVELS[next_lvl_key][1], current_lvl)
-                        state = "PLAY"
-                    elif menu_rect.collidepoint(mx, my):
-                        state = "MAIN_MENU"
+                        selected_lvl = next_lvl_key  # <--- TO DODAJ
+                        if next_lvl_key in LEVELS:
+                            level = Level(LEVELS[next_lvl_key][1], current_lvl)
+                            state = "PLAY"
+                        else:
+                            # jeśli poziomu nie ma, wróć do menu lub zakończ
+                            state = "MAIN_MENU"
+
                 elif state == "GAME_OVER_LOST":
                     if next_rect.collidepoint(mx, my):
                         level = Level(LEVELS[selected_lvl][1], current_lvl)
