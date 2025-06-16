@@ -4,7 +4,7 @@ import numpy as np
 import sys
 import Maps
 from Enemy import Enemy1, Enemy2
-from Fruits import FruitFactory
+from Fruits import FruitFactory, Pineapple
 from Images import IMAGES
 from Obstacles import Obstacle
 from typing import Protocol, runtime_checkable, Any
@@ -72,12 +72,20 @@ class Particle(pygame.sprite.Sprite):
 
 
 class MenuBar:
-    def __init__(self):
+    def __init__(self, level):
         self.rect = pygame.Rect(200, HEIGHT - 60, 600, 60)
         self.color = (50, 100, 50)
+        self.level = level
 
     def draw(self, screen):
         pygame.draw.rect(screen, self.color, self.rect)
+        #TEKST
+        font = pygame.font.Font(None, 40)
+        font_color = (255, 255, 255)
+        score_text = f"LEVEL {self.level}"
+        score_surf = font.render(score_text, True, font_color)
+        score_rect = score_surf.get_rect(topleft=(20, HEIGHT-50))
+        screen.blit(score_surf, score_rect)
 
 
 class Player(pygame.sprite.Sprite):
@@ -233,7 +241,7 @@ class Player(pygame.sprite.Sprite):
 
 # Klasa Level - zarządza grą
 class Level:
-    def __init__(self, level_data):
+    def __init__(self, level_data, lvl_idx):
         self.obstacles = pygame.sprite.Group()
         self.fruits = pygame.sprite.Group()
         self.all_sprites = pygame.sprite.Group()
@@ -241,9 +249,10 @@ class Level:
         self.fruits_to_collect = 0
         self.grid = np.zeros((13, 19), dtype=int)
         self.player = None
+        self.lvl_idx = lvl_idx
         self.load_map(level_data)
         self.all_sprites.add(self.player)
-        self.menu_bar = MenuBar()
+        self.menu_bar = MenuBar(self.lvl_idx)
         self.create_borders()
         self.running = True
         self.won = False
@@ -282,6 +291,9 @@ class Level:
         self.obstacles.draw(surface)
         self.menu_bar.draw(screen)
         self.player.particles.draw(surface)
+        for f in self.fruits:
+            if isinstance(f, Pineapple):
+                f.draw(surface)
 
 
     def load_map(self, level_data):
@@ -391,8 +403,8 @@ def main():
                     for lvl_name, (rect, mapa) in LEVELS.items():
                         if rect.collidepoint(mx, my):
                             selected_lvl = lvl_name
-                            current_lvl = lvl_name[-1]
-                            level = Level(mapa)  # przekazujemy listę znaków, nie współrzędną
+                            current_lvl = int(lvl_name.split('_')[1])
+                            level = Level(mapa, current_lvl)  # przekazujemy listę znaków, nie współrzędną
                             state = "PLAY"
                             break
 
@@ -401,13 +413,13 @@ def main():
                         current_lvl = int(current_lvl) + 1
                         next_lvl_key = f"LEVEL_{current_lvl}"
                         print(next_lvl_key)
-                        level = Level(LEVELS[next_lvl_key][1])
+                        level = Level(LEVELS[next_lvl_key][1], current_lvl)
                         state = "PLAY"
                     elif menu_rect.collidepoint(mx, my):
                         state = "MAIN_MENU"
                 elif state == "GAME_OVER_LOST":
                     if next_rect.collidepoint(mx, my):
-                        level = Level(LEVELS[selected_lvl][1])
+                        level = Level(LEVELS[selected_lvl][1], current_lvl)
                         state = "PLAY"
                     elif menu_rect1.collidepoint(mx, my):
                         state = "MAIN_MENU"
