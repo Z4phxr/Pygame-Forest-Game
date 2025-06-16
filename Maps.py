@@ -1,3 +1,5 @@
+import pygame
+
 DIRECTION_VECTORS = {
     'left':  (0, -1),
     'right': (0,  1),
@@ -213,3 +215,18 @@ LEVEL_12 = [  # Rozgałęziony labirynt z jedną drogą do celu
 # 1 - obstacle
 # 2 - enemy
 # 3 - player
+
+LEVELS = {
+    "LEVEL_1": (pygame.Rect(315, 195, 80, 80), LEVEL_1),
+    "LEVEL_2": (pygame.Rect(440, 128, 80, 80), LEVEL_2),
+    "LEVEL_3": (pygame.Rect(570, 195, 80, 80), LEVEL_3),
+    "LEVEL_4": (pygame.Rect(710, 255, 80, 80), LEVEL_4),
+    "LEVEL_5": (pygame.Rect(315, 332, 80, 80), LEVEL_5),
+    "LEVEL_6": (pygame.Rect(440, 260, 80, 80), LEVEL_6),
+    "LEVEL_7": (pygame.Rect(575, 328, 80, 80), LEVEL_7),
+    "LEVEL_8": (pygame.Rect(720, 395, 80, 80), LEVEL_8),
+    "LEVEL_9": (pygame.Rect(312, 470, 80, 80), LEVEL_9),
+    "LEVEL_10": (pygame.Rect(440, 395, 80, 80), LEVEL_10),
+    "LEVEL_11": (pygame.Rect(580, 474, 80, 80), LEVEL_11),
+    "LEVEL_12": (pygame.Rect(450, 532, 80, 80), LEVEL_12),
+}

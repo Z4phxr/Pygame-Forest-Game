@@ -3,18 +3,7 @@ import random
 import pygame
 from Images import IMAGES
 import numpy as np
-
-# Constants (match Main.py)
-TILE_SIZE = 50
-MAP_OFFSET = 25
-
-# wektor kierunków
-direction_vectors = {
-    'left':  (0, -1),
-    'right': (0,  1),
-    'up':    (-1, 0),
-    'down':  (1,  0),
-}
+from Settings import *
 
 class AnimatedFruit(pygame.sprite.Sprite):
     def __init__(self, x, y, frame_keys, anim_interval=200):
@@ -51,13 +40,13 @@ class GridMovableMixin:
         self.next_direction = None
 
     def move(self, direction):
-        if not self.moving and direction in direction_vectors:
+        if not self.moving and direction in DIRECTION_VECTORS:
             self.next_direction = direction
 
     def update(self, obstacles):
         # enqueue movement
         if not self.moving and self.next_direction:
-            drow, dcol = direction_vectors[self.next_direction]
+            drow, dcol = DIRECTION_VECTORS[self.next_direction]
             new_r = self.grid_pos[0] + drow
             new_c = self.grid_pos[1] + dcol
             test_rect = self.rect.move(dcol * TILE_SIZE, drow * TILE_SIZE)
@@ -155,7 +144,7 @@ class Pineapple(pygame.sprite.Sprite):
         self.grid = grid
         self.grid_pos = [(y - MAP_OFFSET) // TILE_SIZE, (x - MAP_OFFSET) // TILE_SIZE]
         self.target_pos = [x, y]
-        self.direction = random.choice(list(direction_vectors.keys()))
+        self.direction = random.choice(list(DIRECTION_VECTORS.keys()))
         self.speed = 2
         self.fly_speed = 1
 
@@ -247,7 +236,7 @@ class Pineapple(pygame.sprite.Sprite):
             return
 
         # WYBÓR NOWEGO KROKU
-        dr, dc = direction_vectors[self.direction]
+        dr, dc = DIRECTION_VECTORS[self.direction]
         r, c = self.grid_pos
         nr, nc = r + dr, c + dc
 
@@ -278,7 +267,7 @@ class Pineapple(pygame.sprite.Sprite):
         self.image = self.walk_frames[0]
 
     def _change_direction(self):
-        self.direction = random.choice(list(direction_vectors.keys()))
+        self.direction = random.choice(list(DIRECTION_VECTORS.keys()))
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)

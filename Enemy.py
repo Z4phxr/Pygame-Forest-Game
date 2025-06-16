@@ -5,9 +5,20 @@ import pygame
 from Images import IMAGES, TILE_SIZE
 import numpy as np
 from Maps import DIRECTION_VECTORS
+from Settings import *
 
-TILE_SIZE = 50
-MAP_OFFSET = 25
+class EnemyFactory:
+    """
+    Factory to create enemy instances by type.
+    """
+    @staticmethod
+    def create(enemy_type: int, x, y, grid=None):
+        if enemy_type == 1:
+            return Enemy1(x, y, grid)
+        elif enemy_type == 2:
+            return Enemy2(x, y, grid)
+        else:
+            raise ValueError(f"Unknown enemy type: {enemy_type}")
 
 
 class Enemy1(pygame.sprite.Sprite):
@@ -246,9 +257,8 @@ class Enemy2(pygame.sprite.Sprite):
                 self.target_pos = self.pixel_from_grid(self.grid_pos)
                 self.moving = True
             else:
-                # Blocked: turn right
-                idx = self.DIRECTIONS.index(self.direction)
-                self.direction = self.DIRECTIONS[(idx + 1) % len(self.DIRECTIONS)]
+                # Blocked: turn random direction other than current
+                self.direction = self.DIRECTIONS[random.randint(0, 3)]
                 self.frame_index = 0
 
         # 2) Smooth movement if in progress
