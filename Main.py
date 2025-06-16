@@ -89,8 +89,6 @@ class MenuBar:
 
 class Player(pygame.sprite.Sprite):
     def __init__(self, x, y):
-        self.sound_destroy = pygame.mixer.Sound("niszczenie.mp3")
-        self.sound_destroy.set_volume(0.7)
         super().__init__()
         # walking frames
         self.frames = {
@@ -137,24 +135,15 @@ class Player(pygame.sprite.Sprite):
             self.pending_create.append((ny, nx)); ny += dy; nx += dx
         self.next_change_time = pygame.time.get_ticks() + self.change_interval
 
-    def destroy_obs(self, obstacles, grid):self.pending_create.clear()
-    y, x = self.grid_pos
-    dx, dy = DIRECTION_VECTORS[self.direction]
-    ny, nx = y + dy, x + dx
-    self.pending_destroy.clear()
-
-    while 0 <= ny < grid.shape[0] and 0 <= nx < grid.shape[1] and grid[ny][nx] == 1:
-        self.pending_destroy.append((ny, nx))
-        self.sound_destroy.play()  # odtwórz dźwięk niszczenia
-        ny += dy
-        nx += dx
-
-    # Ustaw zniszczone przeszkody jako 0, żeby nie niszczyć ich ponownie
-    for ny, nx in self.pending_destroy:
-        grid[ny][nx] = 0
-
-    self.next_change_time = pygame.time.get_ticks() + self.change_interval
-
+    def destroy_obs(self, obstacles, grid):
+        self.pending_create.clear()
+        y, x = self.grid_pos
+        dy, dx = DIRECTION_VECTORS[self.direction]
+        ny, nx = y + dy, x + dx
+        self.pending_destroy.clear()
+        while 0 <= ny < grid.shape[0] and 0 <= nx < grid.shape[1] and grid[ny][nx] == 1:
+            self.pending_destroy.append((ny, nx)); ny += dy; nx += dx
+        self.next_change_time = pygame.time.get_ticks() + self.change_interval
 
     def change_obs(self, obstacles, grid):
         y, x = self.grid_pos
