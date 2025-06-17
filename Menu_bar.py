@@ -1,17 +1,27 @@
-import pygame
 from Settings import *
 
 class MenuBar:
     def __init__(self, level):
-        self.rect = pygame.Rect(200, HEIGHT - 60, 600, 60)
-        self.color = (50, 100, 50)
         self.level = level
+        self.time_left = 60  # seconds
+
+    def update_timer(self, time_left):
+        """Update the time left to be displayed."""
+        self.time_left = time_left
 
     def draw(self, screen):
-        #TEKST
-        font = pygame.font.Font(None, 40)
-        font_color = (255, 255, 255)
-        score_text = f"LEVEL {self.level}"
-        score_surf = font.render(score_text, True, font_color)
-        score_rect = score_surf.get_rect(topleft=(200, HEIGHT-50))
-        screen.blit(score_surf, score_rect)
+        font = pygame.font.Font("Assets/Adumu.ttf", 40)
+        font_color = (29, 78, 28)
+
+        # LEVEL info
+        level_text = f"LEVEL {self.level}"
+        level_surf = font.render(level_text, True, font_color)
+        screen.blit(level_surf, (320, HEIGHT - 50))
+
+        # TIME info
+        minutes = self.time_left // 60
+        seconds = self.time_left % 60
+        time_str = f"{minutes:02}:{seconds:02}"
+        time_surf = font.render(time_str, True, font_color)
+        screen.blit(time_surf, (560, HEIGHT - 50))
+

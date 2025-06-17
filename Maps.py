@@ -1,21 +1,26 @@
-import pygame
+# ==============================
+#          MAP LEGEND
+# ==============================
 
-DIRECTION_VECTORS = {
-    'left':  (0, -1),
-    'right': (0,  1),
-    'up':    (-1, 0),
-    'down':  (1,  0),
-}
+# '#' - Obstacle
+# ' ' - Empty
+# 'P' - Player
+# 'A' - Orange (static)
+# 'B' - Strawberry (moves randomly)
+# 'C' - Pineapple (can fly over obstacles)
 
-LEVEL_1 = [  # Prosty tunel z przeszkodami i zygzakami
+# 'a' - Enemy type 1 (simple, moves randomly)
+# 'b' - Enemy type 2 (smart, uses BFS)
+
+LEVEL_1 = [
     "###################",
-    "#A     #     #   P#",
+    "# a    #     # A P#",
     "# ### ##### ### # #",
-    "#     b   b     # #",
+    "#               # #",
     "### ########### # #",
-    "#   #   B   #   # #",
+    "#   #       #   # #",
     "# # # ##### # ### #",
-    "# #     B       B #",
+    "# #               #",
     "# ### ### ### ### #",
     "#   b     b       #",
     "# ### ### ### ### #",
@@ -23,7 +28,7 @@ LEVEL_1 = [  # Prosty tunel z przeszkodami i zygzakami
     "###################"
 ]
 
-LEVEL_2 = [  # Spirala
+LEVEL_2 = [
     "###################",
     "#P              A #",
     "# ############### #",
@@ -39,7 +44,7 @@ LEVEL_2 = [  # Spirala
     "###################"
 ]
 
-LEVEL_3 = [  # Labirynt w kształcie litery H
+LEVEL_3 = [
     "###################",
     "#A   #       #   A#",
     "# #  # ##### #  # #",
@@ -55,7 +60,7 @@ LEVEL_3 = [  # Labirynt w kształcie litery H
     "###################"
 ]
 
-LEVEL_4 = [  # Otwarty z ukrytymi kieszeniami
+LEVEL_4 = [
     "###################",
     "#P   B       B   A#",
     "# ### ### ### ### #",
@@ -71,7 +76,7 @@ LEVEL_4 = [  # Otwarty z ukrytymi kieszeniami
     "###################"
 ]
 
-LEVEL_5 = [  # Trzy poziome "pokoje"
+LEVEL_5 = [
     "###################",
     "#  A     B     A  #",
     "# ######   ###### #",
@@ -87,7 +92,7 @@ LEVEL_5 = [  # Trzy poziome "pokoje"
     "###################"
 ]
 
-LEVEL_6 = [  # Wężowaty labirynt
+LEVEL_6 = [
     "###################",
     "#P     #       # A#",
     "##### ### ### ### #",
@@ -103,7 +108,7 @@ LEVEL_6 = [  # Wężowaty labirynt
     "###################"
 ]
 
-LEVEL_7 = [  # "Korytarz z pułapkami"
+LEVEL_7 = [
     "###################",
     "#P A   ###   A   B#",
     "# ### ##### ### # #",
@@ -119,23 +124,23 @@ LEVEL_7 = [  # "Korytarz z pułapkami"
     "###################"
 ]
 
-LEVEL_8 = [  # Symetryczny krzyż
+LEVEL_8 = [
     "###################",
     "#    #   A   #    #",
     "# ## # ##### # ## #",
-    "# ##         ## ## #",
+    "# ##        ## ## #",
     "# ### ##### ### ###",
     "#   #   P   #     #",
     "##### ### ### #####",
     "#     #   #     B #",
     "# ### ##### ### ###",
-    "# ##   b b   ## ## #",
+    "# ##  b b   ## ## #",
     "# ## ##### ## ## ##",
     "#   B   C   B     #",
     "###################"
 ]
 
-LEVEL_9 = [  # Litera "M"
+LEVEL_9 = [
     "###################",
     "#P   #       #   A#",
     "# #  # ##### #  # #",
@@ -151,7 +156,7 @@ LEVEL_9 = [  # Litera "M"
     "###################"
 ]
 
-LEVEL_10 = [  # Korytarze w kształcie "S"
+LEVEL_10 = [
     "###################",
     "#A     #       A P#",
     "##### # ##### ### #",
@@ -167,7 +172,7 @@ LEVEL_10 = [  # Korytarze w kształcie "S"
     "###################"
 ]
 
-LEVEL_11 = [  # Okrągły układ
+LEVEL_11 = [
     "###################",
     "#   A         A   #",
     "# ### ####### ### #",
@@ -183,7 +188,7 @@ LEVEL_11 = [  # Okrągły układ
     "###################"
 ]
 
-LEVEL_12 = [  # Rozgałęziony labirynt z jedną drogą do celu
+LEVEL_12 = [
     "###################",
     "#P A   #   #   A B#",
     "# ### ### # ### # #",
@@ -195,19 +200,9 @@ LEVEL_12 = [  # Rozgałęziony labirynt z jedną drogą do celu
     "# ### # # ### ### #",
     "#   b   #   b     #",
     "# ### ### ### ### #",
-    "#       C       P #",
+    "# a     C       P #",
     "###################"
 ]
-
-
-# ON MAPS:
-# # - obstcale
-# A - orange - w miejscu
-# B - strawberry - przemieszcza sie
-# C - pineapple - lata nad przeskodami
-
-# a - enemy1 - z AI bfs (trudniejszy)
-# b - enemy2 - chodzi w losym kierunku
 
 
 # ON THE GRID
@@ -216,6 +211,11 @@ LEVEL_12 = [  # Rozgałęziony labirynt z jedną drogą do celu
 # 2 - enemy
 # 3 - player
 
+
+# These levels are linked to clickable rectangles in LEVELS dict,
+# for use in the level select screen.
+
+import pygame
 LEVELS = {
     "LEVEL_1": (pygame.Rect(315, 195, 80, 80), LEVEL_1),
     "LEVEL_2": (pygame.Rect(440, 128, 80, 80), LEVEL_2),
