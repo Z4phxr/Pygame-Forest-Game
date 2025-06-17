@@ -108,12 +108,19 @@ class Enemy2(BaseEnemy):
         if len(self.path) > 1:
             nxt = self.path[1]
             old_r, old_c = self.grid_pos
+
+            # Jeśli pole docelowe jest zajęte przez innego enemy – czekaj
+            if self.grid[nxt[0]][nxt[1]] == 2:
+                self.animate_frustration()
+                return
+
             dr, dc = nxt[0] - old_r, nxt[1] - old_c
 
             self.grid[old_r][old_c] = 0
             self.grid[nxt[0]][nxt[1]] = 2
             self.grid_pos = [nxt[0], nxt[1]]
             self.target_pos = self.pixel_pos_from_grid(self.grid_pos)
+
 
             if dc < 0:
                 self.direction = 'left'

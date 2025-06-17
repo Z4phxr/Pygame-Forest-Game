@@ -43,7 +43,8 @@ class Enemy1(BaseEnemy):
 
             if (0 <= new_r < self.grid.shape[0] and
                     0 <= new_c < self.grid.shape[1] and
-                    self.grid[new_r][new_c] != 1):
+                    self.grid[new_r][new_c] != 1 and
+                    self.grid[new_r][new_c] != 2):
                 # Free old tile and reserve new one
                 old_r, old_c = self.grid_pos
                 self.grid[old_r][old_c] = 0

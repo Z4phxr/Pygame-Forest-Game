@@ -6,7 +6,7 @@ class ScoreBoard:
     If a level is missing, shows 'None'.
     """
 
-    def __init__(self, font_path="Adumu.ttf", file_path="best_times.txt"):
+    def __init__(self, font_path="Assets/Adumu.ttf", file_path="Assets/best_times.txt"):
         self.file_path = file_path
         self.font = pygame.font.Font(font_path, 36)
         self.title_font = pygame.font.Font(font_path, 60)
